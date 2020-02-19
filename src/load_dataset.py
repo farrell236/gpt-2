@@ -20,7 +20,8 @@ def load_dataset(enc, path, combine, encoding=None):
         paths = glob.glob(path)
 
     token_chunks = []
-    raw_text = ''
+    raw_text = []
+    raw_text_len = 0
     for path in tqdm.tqdm(paths):
         if path.endswith('.npz'):
             # Pre-encoded
@@ -30,15 +31,16 @@ def load_dataset(enc, path, combine, encoding=None):
         else:
             # Plain text
             with open(path, 'r', encoding=encoding) as fp:
-                raw_text += fp.read()
-            if len(raw_text) >= combine:
-                tokens = np.stack(enc.encode(raw_text))
+                text = fp.read()
+                raw_text.append(text)
+                raw_text_len += len(text)
+            if raw_text_len >= combine:
+                tokens = np.hstack([enc.encode(entry)+[enc.encoder['<|endoftext|>']] for entry in raw_text])
                 token_chunks.append(tokens)
-                raw_text = ''
-            else:
-                raw_text += '<|endoftext|>'
+                raw_text = []
+                raw_text_len = 0
     if raw_text:
-        tokens = np.stack(enc.encode(raw_text))
+        tokens = np.hstack([enc.encode(entry)+[enc.encoder['<|endoftext|>']] for entry in raw_text])
         token_chunks.append(tokens)
     return token_chunks
 
